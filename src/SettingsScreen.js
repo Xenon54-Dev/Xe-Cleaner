@@ -1,6 +1,10 @@
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { colors, fonts, radius, HOLIDAY_PALETTES, ACTIVE_HOLIDAY } from './theme';
 import { SENSITIVITY, DEPTHS } from './storage';
+import { getBiometricEnabled, setBiometricEnabled } from './auth/authStore';
+import { getBiometricInfo, authenticateWithBiometric } from './auth/biometric';
+import { tapLight } from './haptics';
 
 function Row({ k, v }) {
   return (
@@ -12,6 +16,23 @@ function Row({ k, v }) {
 }
 
 export default function SettingsScreen({ settings, onChange, onClearCache, user, onSignOut, isPremium, onUpgrade }) {
+  const [biometricInfo, setBioInfo] = useState(null);
+  const [bioEnabled, setBioEnabled] = useState(false);
+
+  useEffect(() => {
+    getBiometricInfo().then(setBioInfo);
+    getBiometricEnabled().then(setBioEnabled);
+  }, []);
+
+  async function toggleBiometric() {
+    const ok = await authenticateWithBiometric(biometricInfo?.label || 'Biometrics');
+    if (!ok) return;
+    tapLight();
+    const next = !bioEnabled;
+    setBioEnabled(next);
+    await setBiometricEnabled(next);
+  }
+
   return (
     <ScrollView style={styles.wrap} contentContainerStyle={{ paddingBottom: 130 }} showsVerticalScrollIndicator={false}>
       <Text style={styles.h1}>Settings</Text>
@@ -21,6 +42,23 @@ export default function SettingsScreen({ settings, onChange, onClearCache, user,
         <Row k="Name" v={user?.name || '—'} />
         <Row k="Email" v={user?.email || '—'} />
         <Row k="Role" v={user?.role === 'admin' ? 'CEO / Admin' : 'Member'} />
+      </View>
+
+      <Text style={[styles.section, { marginTop: 30 }]}>Security</Text>
+      <View style={styles.aboutCard}>
+        {biometricInfo?.available ? (
+          <Pressable onPress={toggleBiometric} style={({ pressed }) => [styles.aboutRow, pressed && styles.pressed]}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.aboutKey}>{biometricInfo.label} sign-in</Text>
+              <Text style={styles.secSub}>Use {biometricInfo.label} to unlock your saved session</Text>
+            </View>
+            <View style={[styles.bioSwitch, bioEnabled && styles.bioSwitchOn]}>
+              <View style={[styles.bioKnob, bioEnabled && styles.bioKnobOn]} />
+            </View>
+          </Pressable>
+        ) : (
+          <Row k={biometricInfo?.label || 'Biometrics'} v="Unavailable" />
+        )}
       </View>
 
       <Text style={[styles.section, { marginTop: 30 }]}>Subscription</Text>
@@ -124,6 +162,11 @@ const styles = StyleSheet.create({
   aboutRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
   aboutKey: { fontFamily: fonts.body, fontSize: 14, color: colors.dim },
   aboutVal: { fontFamily: fonts.bodySemi, fontSize: 14, color: colors.text },
+  secSub: { fontFamily: fonts.body, fontSize: 12, color: colors.faint, marginTop: 3 },
+  bioSwitch: { width: 42, height: 25, borderRadius: 13, backgroundColor: 'rgba(255,255,255,0.12)', padding: 3, justifyContent: 'center' },
+  bioSwitchOn: { backgroundColor: colors.mint },
+  bioKnob: { width: 19, height: 19, borderRadius: 10, backgroundColor: '#fff' },
+  bioKnobOn: { alignSelf: 'flex-end' },
   how: { fontFamily: fonts.body, fontSize: 13, color: colors.faint, marginTop: 16, lineHeight: 19 },
   swatchGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 12 },
   swatchItem: { width: '47.5%' },

@@ -5,6 +5,46 @@ import { ADMIN_CONFIG } from './adminConfig';
 
 const USERS_KEY = 'xe:users:v1';
 const SESSION_KEY = 'xe_session_v1'; // SecureStore keys: alphanumeric . _ - only
+const BIOMETRIC_KEY = 'xe:biometric:v1';
+
+export async function getBiometricEnabled() {
+  try {
+    return (await AsyncStorage.getItem(BIOMETRIC_KEY)) === '1';
+  } catch {
+    return false;
+  }
+}
+
+export async function setBiometricEnabled(value) {
+  try {
+    await AsyncStorage.setItem(BIOMETRIC_KEY, value ? '1' : '0');
+  } catch {
+    // ignore
+  }
+}
+
+// Sign in via a social provider (Apple/Google). Creates a local user record on
+// first login. Stores no password — the provider is the source of truth.
+export async function signInFromProvider({ provider, id, email, name, remember = true }) {
+  if (!provider || !id) throw new Error('Invalid provider response.');
+  const cleanEmail = (email || `${provider}-${id}@local`).toLowerCase();
+  const users = await getUsers();
+  let user = users.find((u) => u.providerId === id && u.provider === provider);
+  if (!user) {
+    user = {
+      email: cleanEmail,
+      name: name || `${provider[0].toUpperCase()}${provider.slice(1)} user`,
+      provider,
+      providerId: id,
+      createdAt: Date.now(),
+    };
+    users.push(user);
+    await saveUsers(users);
+  }
+  const session = { email: user.email, name: user.name, role: 'user', provider };
+  if (remember) await persistSession(session);
+  return session;
+}
 
 export function validateEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((email || '').trim());

@@ -41,14 +41,14 @@ import TabBar from './src/TabBar';
 import HistoryScreen from './src/HistoryScreen';
 import SettingsScreen from './src/SettingsScreen';
 import FreedToast from './src/FreedToast';
-import VpnScreen from './src/VpnScreen';
 import Splash from './src/Splash';
 import AuthScreen from './src/auth/AuthScreen';
 import AdminScreen from './src/AdminScreen';
 import BoostScreen from './src/BoostScreen';
 import BlurryScreen from './src/BlurryScreen';
 import Paywall from './src/Paywall';
-import { restoreSession, signOut as authSignOut } from './src/auth/authStore';
+import { restoreSession, signOut as authSignOut, getBiometricEnabled, setBiometricEnabled } from './src/auth/authStore';
+import { getBiometricInfo } from './src/auth/biometric';
 import { getDeviceStorage } from './src/device';
 import { tapSelect, tapSuccess } from './src/haptics';
 import {
@@ -115,6 +115,8 @@ export default function App() {
   const [onboarded, setOnboarded] = useState(null);
   const [user, setUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
+  const [savedSession, setSavedSession] = useState(null);
+  const [biometricInfo, setBiometricInfo] = useState(null);
   const [minSplashDone, setMinSplashDone] = useState(false);
   const [premium, setPremiumState] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
@@ -144,7 +146,16 @@ export default function App() {
       setDeviceStorage(await getDeviceStorage());
       setOnboarded(await isOnboarded());
       const session = await restoreSession();
-      if (session) setUser(session);
+      const bioInfo = await getBiometricInfo();
+      setBiometricInfo(bioInfo);
+      if (session) {
+        const bioEnabled = await getBiometricEnabled();
+        if (bioEnabled && bioInfo.available) {
+          setSavedSession(session); // require biometric unlock
+        } else {
+          setUser(session);
+        }
+      }
       setPremiumState(await getPremium());
       setAuthChecked(true);
     })();
@@ -189,7 +200,36 @@ export default function App() {
   async function doSignOut() {
     await authSignOut();
     setUser(null);
+    setSavedSession(null);
     setTab('clean');
+  }
+
+  function continueAsGuest() {
+    handleAuthed({ name: 'Guest', email: '', role: 'user', guest: true });
+  }
+
+  async function handleAuthed(session) {
+    setUser(session);
+    setSavedSession(null);
+    // Offer Face ID enrollment after first successful sign-in.
+    if (biometricInfo?.available && !(await getBiometricEnabled()) && !session.guest) {
+      setTimeout(() => {
+        Alert.alert(
+          `Enable ${biometricInfo.label}?`,
+          `Sign in faster next time using ${biometricInfo.label}.`,
+          [
+            { text: 'Not now', style: 'cancel' },
+            {
+              text: 'Enable',
+              onPress: async () => {
+                await setBiometricEnabled(true);
+                showToast(`${biometricInfo.label} enabled`);
+              },
+            },
+          ]
+        );
+      }, 500);
+    }
   }
   function refreshStats() {
     getStats().then(setStats);
@@ -413,7 +453,16 @@ export default function App() {
         <Aurora />
         <SeasonalLayer />
         <StatusBar style="light" />
-        <AuthScreen onAuthed={setUser} />
+        <AuthScreen
+          onAuthed={handleAuthed}
+          onGuest={continueAsGuest}
+          savedSession={savedSession}
+          biometricInfo={biometricInfo}
+          onBiometricUnlock={(s) => {
+            setUser(s);
+            setSavedSession(null);
+          }}
+        />
       </View>
     );
   }
@@ -732,7 +781,6 @@ export default function App() {
           </View>
         )}
 
-        {tab === 'vpn' && <VpnScreen />}
         {tab === 'history' && <HistoryScreen stats={stats} />}
         {tab === 'settings' && (
           <SettingsScreen
