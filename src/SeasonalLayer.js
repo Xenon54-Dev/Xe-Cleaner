@@ -4,14 +4,22 @@ import { ACTIVE_HOLIDAY_KEY } from './theme';
 
 const { width: W, height: H } = Dimensions.get('window');
 
-// Per-holiday ambient effect: drifting glyphs/dots that fall, rise, or float.
+// Per-theme ambient effect. `kind`: glyph (emoji/char), dot (round), leaf (oval).
+// `dir`: down | up | float. Tuned to feel premium and subtle, never busy.
 const FX = {
-  christmas: { kind: 'glyph', glyph: '❄', colors: ['#FFFFFF', '#D6ECFF'], count: 22, dir: 'down', min: 10, max: 22, sway: 34, dmin: 7000, dmax: 13000, opacity: 0.85 },
-  valentines: { kind: 'glyph', glyph: '♥', colors: ['#FF6FAE', '#FFA6CC'], count: 16, dir: 'up', min: 12, max: 24, sway: 28, dmin: 8000, dmax: 14000, opacity: 0.8 },
-  july4: { kind: 'glyph', glyph: '★', colors: ['#4C8DFF', '#FF4D5E', '#FFFFFF'], count: 20, dir: 'up', min: 9, max: 18, sway: 18, dmin: 6000, dmax: 11000, opacity: 0.9, twinkle: true },
-  halloween: { kind: 'dot', colors: ['#FF8A1E', '#A05BFF'], count: 26, dir: 'up', min: 3, max: 8, sway: 24, dmin: 6000, dmax: 12000, opacity: 0.7, twinkle: true },
-  thanksgiving: { kind: 'leaf', colors: ['#F0A93B', '#C75B36', '#E0903A'], count: 18, dir: 'down', min: 9, max: 18, sway: 46, dmin: 7000, dmax: 13000, opacity: 0.85, rotate: true },
+  newyear: { kind: 'glyph', glyph: '✦', colors: ['#FFD86B', '#FFFFFF', '#B9A6FF'], count: 22, dir: 'up', min: 8, max: 18, sway: 22, dmin: 5000, dmax: 10000, opacity: 0.9, twinkle: true },
+  winter: { kind: 'glyph', glyph: '❄', colors: ['#FFFFFF', '#D8EEFF', '#A9D6FF'], count: 26, dir: 'down', min: 9, max: 20, sway: 40, dmin: 8000, dmax: 15000, opacity: 0.8, rotate: true },
+  valentines: { kind: 'glyph', glyph: '♥', colors: ['#FF6FAE', '#FFA6CC', '#FFD1E8'], count: 16, dir: 'up', min: 12, max: 24, sway: 28, dmin: 8000, dmax: 14000, opacity: 0.8 },
+  stpatrick: { kind: 'glyph', glyph: '☘', colors: ['#3FD97A', '#7BE3A0', '#E8C547'], count: 18, dir: 'down', min: 11, max: 22, sway: 44, dmin: 7000, dmax: 13000, opacity: 0.82, rotate: true },
+  aprilfools: { kind: 'dot', colors: ['#FF6FAE', '#5AC8FA', '#FFD86B', '#7BE3A0'], count: 28, dir: 'down', min: 5, max: 11, sway: 50, dmin: 5000, dmax: 10000, opacity: 0.85, rotate: true },
   easter: { kind: 'dot', colors: ['#6FE0D0', '#C6A8FF', '#FFD1E8', '#FFF1A6'], count: 20, dir: 'float', min: 6, max: 13, sway: 32, dmin: 9000, dmax: 15000, opacity: 0.7 },
+  summer: { kind: 'dot', colors: ['#2FE3C2', '#FF8A5B', '#FFE08A', '#FFFFFF'], count: 22, dir: 'up', min: 5, max: 14, sway: 30, dmin: 7000, dmax: 13000, opacity: 0.5, twinkle: true },
+  july4: { kind: 'glyph', glyph: '★', colors: ['#4C8DFF', '#FF4D5E', '#FFFFFF'], count: 20, dir: 'up', min: 9, max: 18, sway: 18, dmin: 6000, dmax: 11000, opacity: 0.9, twinkle: true },
+  halloween: { kind: 'dot', colors: ['#FF8A1E', '#A05BFF', '#FFB05B'], count: 26, dir: 'up', min: 3, max: 8, sway: 24, dmin: 6000, dmax: 12000, opacity: 0.7, twinkle: true },
+  thanksgiving: { kind: 'leaf', colors: ['#F0A93B', '#C75B36', '#E0903A'], count: 18, dir: 'down', min: 9, max: 18, sway: 46, dmin: 7000, dmax: 13000, opacity: 0.85, rotate: true },
+  christmas: { kind: 'glyph', glyph: '❄', colors: ['#FFFFFF', '#D6ECFF', '#9BE8B5'], count: 24, dir: 'down', min: 10, max: 22, sway: 34, dmin: 7000, dmax: 13000, opacity: 0.85 },
+  aurora: { kind: 'dot', colors: ['#9D7CFF', '#FF6FD5', '#7CE0FF', '#FFFFFF'], count: 30, dir: 'float', min: 4, max: 12, sway: 38, dmin: 9000, dmax: 16000, opacity: 0.7, twinkle: true },
+  synthwave: { kind: 'dot', colors: ['#2DE2E6', '#FF2E97', '#9D7CFF', '#FFFFFF'], count: 32, dir: 'up', min: 4, max: 11, sway: 26, dmin: 6000, dmax: 12000, opacity: 0.8, twinkle: true },
 };
 
 function Particle({ cfg }) {
@@ -62,12 +70,16 @@ function Particle({ cfg }) {
 
 function Field({ cfg }) {
   const ids = useRef([...Array(cfg.count)].map((_, i) => i)).current;
+  const fade = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(fade, { toValue: 1, duration: 1400, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+  }, []);
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+    <Animated.View style={[StyleSheet.absoluteFill, { opacity: fade }]} pointerEvents="none">
       {ids.map((i) => (
         <Particle key={i} cfg={cfg} />
       ))}
-    </View>
+    </Animated.View>
   );
 }
 

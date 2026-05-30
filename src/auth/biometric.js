@@ -24,8 +24,9 @@ export async function authenticateWithBiometric(label = 'Biometrics') {
     const result = await LocalAuthentication.authenticateAsync({
       promptMessage: `Sign in to Xe Cleaner with ${label}`,
       cancelLabel: 'Cancel',
-      fallbackLabel: 'Use password',
-      disableDeviceFallback: false,
+      // Biometric ONLY — don't fall back to the iPhone passcode. If Face ID
+      // doesn't pass, the user taps the app's own "Use password instead".
+      disableDeviceFallback: true,
     });
     return Boolean(result.success);
   } catch {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
-import { colors, fonts, radius, HOLIDAY_PALETTES, ACTIVE_HOLIDAY } from './theme';
+import { colors, fonts, radius } from './theme';
 import { SENSITIVITY, DEPTHS } from './storage';
 import { getBiometricEnabled, setBiometricEnabled } from './auth/authStore';
 import { getBiometricInfo, authenticateWithBiometric } from './auth/biometric';
@@ -108,25 +108,6 @@ export default function SettingsScreen({ settings, onChange, onClearCache, user,
         screenshots, and duplicates. Nothing is ever uploaded.
       </Text>
 
-      <Text style={[styles.section, { marginTop: 30 }]}>Seasonal themes</Text>
-      <View style={styles.aboutCard}>
-        <Row k="Active theme" v={ACTIVE_HOLIDAY || 'Midnight Aurora'} />
-      </View>
-      <View style={styles.swatchGrid}>
-        {Object.values(HOLIDAY_PALETTES).map((p) => (
-          <View key={p.name} style={styles.swatchItem}>
-            <View style={styles.swatch}>
-              <View style={{ flex: 1, backgroundColor: p.mint }} />
-              <View style={{ flex: 1, backgroundColor: p.violet }} />
-            </View>
-            <Text style={styles.swatchName} numberOfLines={1}>{p.name}</Text>
-          </View>
-        ))}
-      </View>
-      <Text style={styles.how}>
-        The app themes itself automatically on these holidays. To preview now, set your iPhone's date to one of them and reload.
-      </Text>
-
       <Pressable
         onPress={() => Share.share({ message: 'Xe Cleaner — find and clear the junk hogging your iPhone storage.' })}
         style={({ pressed }) => [styles.shareBtn, { marginTop: 22 }, pressed && styles.pressed]}
@@ -168,9 +149,5 @@ const styles = StyleSheet.create({
   bioKnob: { width: 19, height: 19, borderRadius: 10, backgroundColor: '#fff' },
   bioKnobOn: { alignSelf: 'flex-end' },
   how: { fontFamily: fonts.body, fontSize: 13, color: colors.faint, marginTop: 16, lineHeight: 19 },
-  swatchGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 12 },
-  swatchItem: { width: '47.5%' },
-  swatch: { flexDirection: 'row', height: 30, borderRadius: radius.sm, overflow: 'hidden', borderWidth: 1, borderColor: colors.cardBorder },
-  swatchName: { fontFamily: fonts.body, fontSize: 12, color: colors.dim, marginTop: 6 },
   pressed: { opacity: 0.82, transform: [{ scale: 0.98 }] },
 });

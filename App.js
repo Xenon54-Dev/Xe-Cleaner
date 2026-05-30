@@ -26,7 +26,7 @@ import {
 } from '@expo-google-fonts/bricolage-grotesque';
 import { Manrope_500Medium, Manrope_600SemiBold, Manrope_700Bold } from '@expo-google-fonts/manrope';
 
-import { colors, fonts, radius, shadow, ACTIVE_HOLIDAY } from './src/theme';
+import { colors, fonts, radius, shadow, ACTIVE_HOLIDAY, IS_RARE_THEME, RARE_THEME } from './src/theme';
 import StorageRing from './src/StorageRing';
 import Aurora from './src/Aurora';
 import AnimatedNumber from './src/AnimatedNumber';
@@ -44,6 +44,8 @@ import FreedToast from './src/FreedToast';
 import Splash from './src/Splash';
 import AuthScreen from './src/auth/AuthScreen';
 import AdminScreen from './src/AdminScreen';
+import InsightsScreen from './src/InsightsScreen';
+import { recordStorageSample } from './src/insights';
 import BoostScreen from './src/BoostScreen';
 import BlurryScreen from './src/BlurryScreen';
 import Paywall from './src/Paywall';
@@ -138,12 +140,15 @@ export default function App() {
 
   const anims = useRef([0, 1, 2, 3, 4].map(() => new Animated.Value(0))).current;
   const tabAnim = useRef(new Animated.Value(1)).current;
+  const rareShown = useRef(false);
 
   useEffect(() => {
     (async () => {
       setSettings(await loadSettings());
       setStats(await getStats());
-      setDeviceStorage(await getDeviceStorage());
+      const ds = await getDeviceStorage();
+      setDeviceStorage(ds);
+      recordStorageSample(ds);
       setOnboarded(await isOnboarded());
       const session = await restoreSession();
       const bioInfo = await getBiometricInfo();
@@ -179,6 +184,14 @@ export default function App() {
     const t = setTimeout(() => setMinSplashDone(true), 2000);
     return () => clearTimeout(t);
   }, []);
+
+  // Lucky launch — 1-in-100 rare theme rolled. Celebrate once the user lands.
+  useEffect(() => {
+    if (user && IS_RARE_THEME && !rareShown.current) {
+      rareShown.current = true;
+      setTimeout(() => setToast({ text: `✨ Rare theme: ${RARE_THEME}`, id: Date.now() }), 700);
+    }
+  }, [user]);
 
   const revealStyle = (i) => ({
     opacity: anims[i],
@@ -621,7 +634,8 @@ export default function App() {
     : hour < 18
     ? 'Good afternoon'
     : 'Good evening';
-  const firstName = (user?.name || 'there').split(' ')[0];
+  const firstName = user?.guest ? 'Welcome' : (user?.name || '').trim().split(' ')[0] || 'Welcome';
+  const avatarInitial = (user?.name || 'U').trim().charAt(0).toUpperCase();
 
   return (
     <View style={styles.root}>
@@ -634,14 +648,16 @@ export default function App() {
         {tab === 'clean' && (
           <View style={styles.tabRoot}>
             <View style={styles.dashHeader}>
-              <View style={{ flex: 1 }}>
+              <View style={styles.headerText}>
                 <Text style={styles.greeting}>{greeting}</Text>
-                <Text style={styles.greetingName}>{firstName}</Text>
+                <Text style={styles.greetingName} numberOfLines={1}>{firstName}</Text>
               </View>
-              <Pressable onPress={() => setTab('settings')} hitSlop={12}>
-                <View style={styles.avatar}>
-                  <Text style={styles.avatarText}>{(user?.name || 'U').trim().charAt(0).toUpperCase()}</Text>
-                </View>
+              <Pressable onPress={() => setTab('settings')} hitSlop={12} style={({ pressed }) => pressed && styles.pressed}>
+                <LinearGradient colors={[colors.mint, colors.violet]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.avatarRing}>
+                  <View style={styles.avatarInner}>
+                    <Text style={styles.avatarText}>{avatarInitial}</Text>
+                  </View>
+                </LinearGradient>
               </Pressable>
             </View>
 
@@ -781,6 +797,7 @@ export default function App() {
           </View>
         )}
 
+        {tab === 'insights' && <InsightsScreen deviceStorage={deviceStorage} />}
         {tab === 'history' && <HistoryScreen stats={stats} />}
         {tab === 'settings' && (
           <SettingsScreen
@@ -897,9 +914,10 @@ const styles = StyleSheet.create({
   brand: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
   topBar: { width: '100%', alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
   wordmark: { fontFamily: fonts.displayX, fontSize: 27, color: colors.text, letterSpacing: 0.3 },
-  dashHeader: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 20 },
-  greeting: { fontFamily: fonts.body, fontSize: 14, color: colors.dim },
-  greetingName: { fontFamily: fonts.displayX, fontSize: 26, color: colors.text, marginTop: 3 },
+  dashHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 6, marginBottom: 24 },
+  headerText: { flex: 1, paddingRight: 12 },
+  greeting: { fontFamily: fonts.bodySemi, fontSize: 13, color: colors.dim, letterSpacing: 0.2 },
+  greetingName: { fontFamily: fonts.displayX, fontSize: 25, color: colors.text, marginTop: 3, letterSpacing: 0.2 },
   dashSection: { fontFamily: fonts.bodySemi, fontSize: 12, letterSpacing: 1.5, color: colors.dim, textTransform: 'uppercase', marginTop: 4, marginBottom: 10 },
 
   storageCard: { backgroundColor: colors.card, borderRadius: radius.lg, padding: 18, borderWidth: 1, borderColor: colors.cardBorder, marginBottom: 18, ...shadow.sm },
@@ -925,9 +943,9 @@ const styles = StyleSheet.create({
   chip: { flex: 1, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center', overflow: 'hidden', borderWidth: 1, borderColor: colors.cardBorder },
   chipValue: { fontFamily: fonts.display, fontSize: 19, color: colors.text },
   chipLabel: { fontFamily: fonts.body, fontSize: 11, color: colors.dim, marginTop: 3, letterSpacing: 0.5 },
-  avatarBtn: { position: 'absolute', right: 0, top: -2 },
-  avatar: { width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(103,232,195,0.16)', borderWidth: 1, borderColor: colors.cardBorder, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.mint },
+  avatarRing: { width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center', padding: 2, ...shadow.sm },
+  avatarInner: { width: '100%', height: '100%', borderRadius: 21, backgroundColor: colors.bg1, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { fontFamily: fonts.bodyBold, fontSize: 17, color: colors.text },
   breakdown: { marginBottom: 16 },
   breakdownBar: { flexDirection: 'row', height: 10, borderRadius: 6, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.06)' },
   legendRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 },

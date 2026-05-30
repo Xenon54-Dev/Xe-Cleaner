@@ -10,6 +10,11 @@ WebBrowser.maybeCompleteAuthSession();
 const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '';
 const GOOGLE_IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || '';
 
+// Placeholder used ONLY to keep Google.useAuthRequest from throwing when the
+// real client ID hasn't been set yet. The UI checks `googleConfigured` before
+// ever calling promptAsync, so the placeholder is never used in a live request.
+const PLACEHOLDER_ID = '000000000000-placeholder.apps.googleusercontent.com';
+
 export const googleConfigured = Boolean(GOOGLE_WEB_CLIENT_ID || GOOGLE_IOS_CLIENT_ID);
 
 // Native iOS Apple Sign-In availability (iOS 13+ on a real device).
@@ -44,8 +49,8 @@ export async function signInWithApple() {
 // function and a `configured` flag the UI can use to gate the button.
 export function useGoogleAuth() {
   const [request, response, promptAsync] = Google.useAuthRequest({
-    clientId: GOOGLE_WEB_CLIENT_ID || undefined,
-    iosClientId: GOOGLE_IOS_CLIENT_ID || undefined,
+    clientId: GOOGLE_WEB_CLIENT_ID || PLACEHOLDER_ID,
+    iosClientId: GOOGLE_IOS_CLIENT_ID || PLACEHOLDER_ID,
   });
   return { request, response, promptAsync, configured: googleConfigured };
 }

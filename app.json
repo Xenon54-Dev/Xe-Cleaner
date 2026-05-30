@@ -3,6 +3,7 @@
     "name": "Xe Cleaner",
     "slug": "XeCleaner",
     "version": "1.0.0",
+    "scheme": "xecleaner",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",

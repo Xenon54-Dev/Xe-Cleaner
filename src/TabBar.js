@@ -9,6 +9,7 @@ const PAD = 10;
 
 const TABS = [
   { key: 'clean', label: 'Clean', glyph: '✦' },
+  { key: 'insights', label: 'Insights', glyph: '↗' },
   { key: 'history', label: 'History', glyph: '↺' },
   { key: 'settings', label: 'Settings', glyph: '⚙' },
 ];
