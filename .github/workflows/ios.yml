@@ -46,8 +46,14 @@ jobs:
         run: |
           cd ios
           WORKSPACE=$(ls -d *.xcworkspace | head -n1)
-          SCHEME=$(xcodebuild -list -workspace "$WORKSPACE" -json | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>console.log(JSON.parse(d).workspace.schemes[0]))")
-          echo "Workspace: $WORKSPACE  |  Scheme: $SCHEME"
+          APP_XCODEPROJ=$(ls -d *.xcodeproj 2>/dev/null | grep -v Pods | head -n1)
+          if [ -z "$APP_XCODEPROJ" ]; then
+            echo "ERROR: No app .xcodeproj found in ios/"
+            ls -la
+            exit 1
+          fi
+          SCHEME=$(basename "$APP_XCODEPROJ" .xcodeproj)
+          echo "Workspace: $WORKSPACE  |  App project: $APP_XCODEPROJ  |  Scheme: $SCHEME"
           xcodebuild \
             -workspace "$WORKSPACE" \
             -scheme "$SCHEME" \
